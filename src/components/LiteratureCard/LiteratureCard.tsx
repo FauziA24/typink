@@ -1,4 +1,3 @@
-import { useState } from "react";
 import "./style.scss";
 import { useNavigate } from "react-router-dom";
 
@@ -27,34 +26,26 @@ interface LiteratureCardProps {
 }
 
 export default function LiteratureCard({ item }: LiteratureCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
 
   return (
     <div
-      className="literature-card cursor-pointer w-full"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className="literature-card group cursor-pointer w-full"
       onClick={() => navigate(`/read/${item.literatureId}`)}
     >
-      <div
-        className="h-[350px] rounded-sm overflow-hidden relative"
-        style={{
-          backgroundImage: `url(${item.imageUrl})`,
-          backgroundSize: "cover",
-        }}
-      >
-        {true && (
-          <div className="fade-in h-full">
-            <div className="h-[350px] overflow-hidden bg-black/50 backdrop-blur-md text-white p-4 ">
-              <p className="line-clamp-6 text-ellipsis max-width: 75ch;">
-                {item.synopsis}
-              </p>
-            </div>
-          </div>
-        )}
+      <div className="relative h-[350px] overflow-hidden rounded-sm bg-gray-100">
+        <img
+          src={item.imageUrl}
+          alt={item.title}
+          loading="lazy"
+          className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+        />
+        <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/75 via-black/10 to-transparent opacity-0 transition group-hover:opacity-100">
+          <p className="line-clamp-5 p-4 text-sm text-white">{item.synopsis}</p>
+        </div>
       </div>
-      <h4 className="font-semibold mt-2">{item.title}</h4>
+      <h4 className="font-semibold mt-2 line-clamp-2">{item.title}</h4>
+      <p className="text-sm text-gray-500 line-clamp-1">{item.users.username}</p>
     </div>
   );
 }

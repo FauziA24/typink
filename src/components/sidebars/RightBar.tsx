@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
-import { ForumData, Literature, TopPicks } from "@/util/interfaces";
+import { ForumData, TopPicks } from "@/util/interfaces";
 import axios from "axios";
 import { getApiURL } from "@/util/constants";
 import { useNavigate } from "react-router-dom";
@@ -8,39 +8,25 @@ import { TrendingUp } from "lucide-react";
 
 export default function RightBar() {
   const navigate = useNavigate();
+  const token = sessionStorage.getItem("typink_web_session");
   const [latestData, setLatestData] = useState<TopPicks[]>([]);
   const [forums, setForums] = useState<ForumData[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await axios.get<TopPicks[]>(
-          `${getApiURL()}/literature/top-picks`
-        );
-        setLatestData(response.data);
+        const [topPicksResponse, forumsResponse] = await Promise.all([
+          axios.get<TopPicks[]>(`${getApiURL()}/literature/top-picks`),
+          axios.get<ForumData[]>(`${getApiURL()}/forum/recent-activity`),
+        ]);
+        setLatestData(topPicksResponse.data);
+        setForums(forumsResponse.data);
       } catch (error) {
         console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
       }
     }
 
     fetchData();
-
-    async function fetchForums() {
-      try {
-        const response = await axios.get<ForumData[]>(
-          `${getApiURL()}/forum/recent-activity`
-        );
-        setForums(response.data);
-      } catch (error) {
-        console.error("Error fetching forums:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchForums();
   }, []);
 
   return (
@@ -57,6 +43,7 @@ export default function RightBar() {
           <img
             className="w-[70%] overflow-hidden h-full object-cover rounded-sm"
             alt=""
+            loading="lazy"
             src={book.imageUrl}
           />
 
@@ -80,7 +67,7 @@ export default function RightBar() {
       </h2>
       <Button
         className="w-full my-4 rounded-xl p-2"
-        onClick={() => navigate(`/forum/create`)}
+        onClick={() => navigate(token ? `/forum/create` : "/auth")}
       >
         Post New Topic
       </Button>

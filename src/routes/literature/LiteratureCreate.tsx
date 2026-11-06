@@ -1,6 +1,5 @@
 import { useForm, SubmitHandler } from "react-hook-form";
 import axios from "axios";
-import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { getApiURL } from "@/util/constants";
+import { useEffect } from "react";
+import MediaUpload from "@/components/MediaUpload/MediaUpload";
 
 type FormData = {
   title: string;
@@ -41,10 +42,21 @@ interface createResponse {
 
 export default function LiteratureCreate() {
   const navigate = useNavigate();
-  const { register, handleSubmit, reset, setValue } = useForm<FormData>();
+  const { register, handleSubmit, reset, setValue, watch } = useForm<FormData>();
+  const imageUrl = watch("imageUrl");
+
+  useEffect(() => {
+    if (!sessionStorage.getItem("typink_web_session")) {
+      toast({
+        title: "Login required",
+        description: "Please log in from the profile menu to create a story.",
+      });
+      navigate("/auth");
+    }
+  }, [navigate]);
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
-    const token = Cookies.get("token");
+    const token = sessionStorage.getItem("typink_web_session");
 
     if (!token) {
       toast({
@@ -67,7 +79,7 @@ export default function LiteratureCreate() {
         },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            
           },
         }
       );
@@ -103,10 +115,13 @@ export default function LiteratureCreate() {
             placeholder="Title"
             className="h-14 text-xl mb-4"
           />
-          <Input
-            {...register("imageUrl", { required: true })}
-            placeholder="Thumbnail Url"
-            className="mb-4"
+          <input type="hidden" {...register("imageUrl", { required: true })} />
+          <MediaUpload
+            purpose="cover"
+            label="Upload cover"
+            value={imageUrl}
+            required
+            onChange={(url) => setValue("imageUrl", url, { shouldValidate: true })}
           />
           <Textarea
             {...register("synopsis", { required: true })}

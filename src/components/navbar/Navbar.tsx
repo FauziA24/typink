@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Cookies from "js-cookie";
 import {
   Plus,
   User,
@@ -8,6 +7,10 @@ import {
   NotebookPen,
   Banknote,
   Search,
+  Loader2,
+  LogIn,
+  Bell,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,15 +26,13 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
-import { Label } from "../ui/label";
 import axios from "axios";
 import { LiteratureData } from "@/util/interfaces";
+import { getStoredSession, loadSession, logout, SessionUser } from "@/api/client";
 
 interface NavbarProps {
   sticky?: boolean;
@@ -41,47 +42,63 @@ export default function Navbar({ sticky = false }: NavbarProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [literatureData, setLiteratureData] = useState<LiteratureData[]>([]);
   const [search, setSearch] = useState("");
-  const username = Cookies.get("username");
-  const uid = Cookies.get("uid");
-  const uimg = Cookies.get("userImage");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [session, setSession] = useState<SessionUser | null>(() => getStoredSession());
+  const username = session?.username;
+  const uid = session?.userId;
+  const uimg = session?.imageUrl;
 
   const navigate = useNavigate();
 
-  const fetchData = async () => {
+  const fetchData = async (query: string) => {
+    const trimmedQuery = query.trim();
+    if (trimmedQuery.length < 2) {
+      setLiteratureData([]);
+      setSearchLoading(false);
+      return;
+    }
+
     try {
+      setSearchLoading(true);
       const literatureResponse = await axios.get(
-        `${getApiURL()}/literature/search?query=${search}`
+        `${getApiURL()}/literature/search?query=${encodeURIComponent(trimmedQuery)}&limit=8`
       );
       setLiteratureData(literatureResponse.data);
     } catch (error) {
       console.error("Error fetching data:", error);
+    } finally {
+      setSearchLoading(false);
     }
   };
 
   useEffect(() => {
-    const token = Cookies.get("token");
-    setIsLoggedIn(!!token);
+    loadSession()
+      .then((user) => { setSession(user); setIsLoggedIn(true); })
+      .catch(() => { setSession(null); setIsLoggedIn(false); });
   }, []);
 
   useEffect(() => {
-    fetchData();
+    const timeout = window.setTimeout(() => {
+      fetchData(search);
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
   }, [search]);
 
-  const handleLogout = () => {
-    Cookies.remove("token");
-    Cookies.remove("uid");
-    Cookies.remove("userImage");
-
-    navigate("/auth");
+  const handleLogout = async () => {
+    await logout().catch(() => undefined);
+    setSession(null);
+    setIsLoggedIn(false);
+    navigate("/");
   };
 
   return (
     <div
-      className={`flex items-center py-2 justify-between  w-[1366px] ${
-        sticky ? "fixed z-50 bg-white" : ""
+      className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-1 py-2 sm:gap-4 ${
+        sticky ? "sticky top-0 z-50 bg-white/95 backdrop-blur" : ""
       }`}
     >
-      <div className="w-[20%] cursor-pointer" onClick={() => navigate("/")}>
+      <div className="shrink-0 cursor-pointer" onClick={() => navigate("/")}>
         <svg
           width="120"
           height="60"
@@ -108,7 +125,7 @@ export default function Navbar({ sticky = false }: NavbarProps) {
               d="M56.9375 49.0929L58.8356 2.9615C58.8356 2.9615 58.543 1.67266 61.1001 1.30782C63.6572 0.942987 63.4171 2.30784 63.4171 2.30784L61.3059 48.4697C59.6928 50.5558 58.9149 49.4161 57.704 49.1316C57.4681 49.0762 57.2157 49.0532 56.9375 49.0929Z"
               fill="#04D192"
               stroke="black"
-              stroke-width="1.07626"
+              strokeWidth="1.07626"
             />
             <path
               d="M56.1945 51.5053L57.4415 55.6739L57.4269 57.0953L61.1949 51.5015L58.1005 54.9589L56.1945 51.5053Z"
@@ -117,7 +134,7 @@ export default function Navbar({ sticky = false }: NavbarProps) {
             <path
               d="M57.2695 49.1343L57.2498 49.758L56.1945 51.5053M56.1945 51.5053L57.4415 55.6739L57.4269 57.0953L61.1949 51.5015M56.1945 51.5053L58.1005 54.9589L61.1949 51.5015M61.1949 51.5015L61.0359 48.863"
               stroke="black"
-              stroke-width="1.07626"
+              strokeWidth="1.07626"
             />
             <path
               d="M58.3873 51.6359L59.0018 51.3708L59.3017 51.949L58.5807 52.2293L58.3873 51.6359Z"
@@ -126,12 +143,12 @@ export default function Navbar({ sticky = false }: NavbarProps) {
             <path
               d="M59.2988 49.6431L59.0018 51.3708M59.0018 51.3708L58.3873 51.6359L58.5807 52.2293M59.0018 51.3708L59.3017 51.949L58.5807 52.2293M58.5807 52.2293L58.1004 54.959"
               stroke="black"
-              stroke-width="1.07626"
+              strokeWidth="1.07626"
             />
             <path
               d="M78.8647 46.6428H93.8966"
               stroke="black"
-              stroke-width="5.38129"
+              strokeWidth="5.38129"
             />
           </svg>
         </svg>
@@ -139,51 +156,75 @@ export default function Navbar({ sticky = false }: NavbarProps) {
 
       <Dialog>
         <DialogTrigger asChild>
-          <Button className="w-96 font-semibold" variant={"outline"}>
-            <Search className="mr-2" /> Search
+          <Button className="h-10 w-10 shrink-0 justify-center px-0 font-semibold text-gray-500 sm:w-full sm:max-w-sm sm:justify-start sm:px-4" variant={"outline"} aria-label="Search novels">
+            <Search className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Search</span>
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="mb-4">Search Novels</DialogTitle>
-            <Input
-              placeholder="Search Here"
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                autoFocus
+                value={search}
+                placeholder="Cari judul, sinopsis, atau tema cerita"
+                className="h-11 pl-10 pr-10"
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {searchLoading && (
+                <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-gray-400" />
+              )}
+            </div>
           </DialogHeader>
-          <div className="flex flex-row w-full justify-between">
+          <div className="flex flex-row w-full justify-between text-xs font-semibold uppercase text-gray-500">
             <span>Title</span>
             <span>Author</span>
           </div>
-          <div className="flex flex-col gap-2  ">
+          <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto">
+            {search.trim().length < 2 && (
+              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-gray-500">
+                Ketik minimal 2 karakter untuk mulai mencari.
+              </div>
+            )}
+            {search.trim().length >= 2 && !searchLoading && literatureData.length === 0 && (
+              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-gray-500">
+                Tidak ada cerita yang cocok.
+              </div>
+            )}
             {literatureData.map((v, i) => (
-              <div
+              <DialogClose
                 key={`k${i}`}
-                className="cursor-pointer h-14 w-full border-2 rounded-lg flex flex-row items-center px-4 justify-between overflow-ellipsis hover:border-black"
+                className="cursor-pointer min-h-16 w-full border rounded-lg flex flex-row items-center px-4 justify-between gap-4 text-left hover:border-black hover:bg-gray-50"
                 onClick={() => navigate(`/read/${v.literatureId}`)}
               >
-                <h1 className="w-[250px] overflow-hidden text-ellipsis whitespace-nowrap">
-                  {v.title}
-                </h1>
-                <h2 className="w-20 line-clamp-1 font-semibold">
+                <div className="min-w-0">
+                  <h1 className="overflow-hidden text-ellipsis whitespace-nowrap font-semibold">
+                    {v.title}
+                  </h1>
+                  <p className="line-clamp-1 text-xs text-gray-500">{v.synopsis}</p>
+                </div>
+                <h2 className="w-24 shrink-0 line-clamp-1 text-sm font-semibold">
                   {v.users.username}
                 </h2>
-              </div>
+              </DialogClose>
             ))}
           </div>
         </DialogContent>
       </Dialog>
-      <div className="pl-3 w-[20%] flex items-center space-x-8">
-        <Button onClick={() => navigate("/forum")} variant={"link"}>
+      <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 md:gap-4">
+        <Button className="hidden sm:inline-flex" onClick={() => navigate("/forum")} variant={"link"}>
           Forum
         </Button>
-        <Button
-          onClick={() => navigate(isLoggedIn ? `/profile/${uid}` : "/auth")}
-          style={{ color: isLoggedIn ? "inherit" : "#04D192" }}
-          variant={"link"}
-        >
-          {isLoggedIn ? "My List" : "Sign Up"}
-        </Button>
+        {isLoggedIn && (
+          <Button
+            className="hidden md:inline-flex"
+            onClick={() => navigate(`/profile/${uid}`)}
+            variant={"link"}
+          >
+            My List
+          </Button>
+        )}
         {isLoggedIn ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -217,15 +258,36 @@ export default function Navbar({ sticky = false }: NavbarProps) {
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut color="#D10404" className="mr-2" /> Log Out
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/library")}>
+                <Bell className="mr-2" /> Library & notifications
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/author/dashboard")}>
+                <LayoutDashboard className="mr-2" /> Author dashboard
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <Button
-            className="text-sm bg-[#04D192] hover:underline hover:bg-[#016B4B]"
-            onClick={() => navigate("/auth")}
-          >
-            Log In
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex h-9 w-9 items-center justify-center rounded-full border bg-white hover:bg-gray-50">
+                <User className="h-5 w-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => navigate("/auth")}>
+                <LogIn className="mr-2" />
+                Log In
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/auth?mode=signup")}>
+                <User className="mr-2" />
+                Sign Up
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/")}>
+                Continue as guest
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     </div>

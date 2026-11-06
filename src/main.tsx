@@ -1,110 +1,119 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, type RouteObject } from "react-router-dom";
 
-import Forum from "./routes/forum/Forum.tsx";
-import ForumCategory from "./routes/forum/ForumCategory.tsx";
-import ForumRead from "./routes/forum/ForumRead.tsx";
-import Literature from "./routes/literature/Literature.tsx";
-import LiteratureCategory from "./routes/literature/LiteratureCategory.tsx";
-import LiteratureRead from "./routes/literature/LiteratureRead.tsx";
-import Auth from "./routes/Auth.tsx";
-import Home from "./routes/Home.tsx";
-import Profile from "./routes/Profile.tsx";
 import { ThemeProvider } from "./components/theme-provider.tsx";
-
 import "../app/globals.css";
-import EditProfile from "./routes/EditProfile.tsx";
-import LiteratureChapter from "./routes/literature/LiteratureChapter.tsx";
 import { Toaster } from "./components/ui/toaster.tsx";
-import ForumCreate from "./routes/forum/ForumCreate.tsx";
-import LiteratureCreate from "./routes/literature/LiteratureCreate.tsx";
-import ChapterCreate from "./routes/literature/ChapterCreate.tsx";
-import DonatePage from "./routes/donation/DonatePage.tsx";
-import ChapterEdit from "./routes/literature/ChapterEdit.tsx";
-import LiteratureEdit from "./routes/literature/LiteratureEdit.tsx";
-import MyCreations from "./routes/profile/MyCreations.tsx";
-import Transactions from "./routes/profile/Transactions.tsx";
+import CmsPage from "./routes/CmsPage.tsx";
+import "./api/client.ts";
+import RouteErrorBoundary from "./components/RouteErrorBoundary.tsx";
 
-const router = createBrowserRouter([
+type PageModule = { default: React.ComponentType };
+
+const lazyPage = (load: () => Promise<PageModule>) => async () => {
+  const { default: Component } = await load();
+  return { Component };
+};
+
+const routes: RouteObject[] = [
   {
     path: "/",
-    element: <Home />,
+    lazy: lazyPage(() => import("./routes/Home.tsx")),
   },
   {
     path: "/auth",
-    element: <Auth />,
+    lazy: lazyPage(() => import("./routes/Auth.tsx")),
+  },
+  {
+    path: "/auth/google/callback",
+    lazy: lazyPage(() => import("./routes/Auth.tsx")),
   },
   {
     path: "/forum",
-    element: <Forum />,
+    lazy: lazyPage(() => import("./routes/forum/Forum.tsx")),
   },
   {
     path: "/forum/create",
-    element: <ForumCreate />,
+    lazy: lazyPage(() => import("./routes/forum/ForumCreate.tsx")),
   },
   {
     path: "/forum/:category",
-    element: <ForumCategory />,
+    lazy: lazyPage(() => import("./routes/forum/ForumCategory.tsx")),
   },
   {
     path: "/forum/:category/:id",
-    element: <ForumRead />,
+    lazy: lazyPage(() => import("./routes/forum/ForumRead.tsx")),
   },
   {
     path: "/novel/create",
-    element: <LiteratureCreate />,
+    lazy: lazyPage(() => import("./routes/literature/LiteratureCreate.tsx")),
   },
   {
     path: "/novel/:literatureId/create-chapter",
-    element: <ChapterCreate />,
+    lazy: lazyPage(() => import("./routes/literature/ChapterCreate.tsx")),
   },
   {
     path: "/novel/edit/:literatureId",
-    element: <LiteratureEdit />,
+    lazy: lazyPage(() => import("./routes/literature/LiteratureEdit.tsx")),
   },
   {
     path: "/novel/edit-chapter/:chapterId",
-    element: <ChapterEdit />,
+    lazy: lazyPage(() => import("./routes/literature/ChapterEdit.tsx")),
   },
   {
     path: "/novels/category/:genreId",
-    element: <LiteratureCategory />,
+    lazy: lazyPage(() => import("./routes/literature/LiteratureCategory.tsx")),
   },
 
   {
     path: "/read/:id",
-    element: <LiteratureRead />,
+    lazy: lazyPage(() => import("./routes/literature/LiteratureRead.tsx")),
   },
   {
     path: "/read/:id/:chapterId",
-    element: <LiteratureChapter />,
+    lazy: lazyPage(() => import("./routes/literature/LiteratureChapter.tsx")),
   },
   {
     path: "/donate/:authorId",
-    element: <DonatePage />,
-  },
-  {
-    path: "/donate/:authorId",
-    element: <DonatePage />,
+    lazy: lazyPage(() => import("./routes/donation/DonatePage.tsx")),
   },
   {
     path: "/profile/:id",
-    element: <Profile />,
+    lazy: lazyPage(() => import("./routes/Profile.tsx")),
   },
   {
     path: "/profile/edit",
-    element: <EditProfile />,
+    lazy: lazyPage(() => import("./routes/EditProfile.tsx")),
   },
   {
     path: "/profile/creations",
-    element: <MyCreations />,
+    lazy: lazyPage(() => import("./routes/profile/MyCreations.tsx")),
   },
   {
     path: "/profile/transactions",
-    element: <Transactions />,
+    lazy: lazyPage(() => import("./routes/profile/Transactions.tsx")),
   },
-]);
+  {
+    path: "/library",
+    lazy: lazyPage(() => import("./routes/profile/ReaderHub.tsx")),
+  },
+  {
+    path: "/author/dashboard",
+    lazy: lazyPage(() => import("./routes/author/AuthorDashboard.tsx")),
+  },
+  { path: "/terms", element: <CmsPage page="terms" /> },
+  { path: "/privacy", element: <CmsPage page="privacy" /> },
+  { path: "/credits", element: <CmsPage page="credits" /> },
+  {
+    path: "*",
+    lazy: lazyPage(() => import("./routes/NotFound.tsx")),
+  },
+];
+
+const router = createBrowserRouter(
+  routes.map((route) => ({ ...route, errorElement: <RouteErrorBoundary /> }))
+);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

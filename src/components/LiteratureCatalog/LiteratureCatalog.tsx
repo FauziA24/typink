@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
 import axios from "axios";
 import LiteratureCard from "../LiteratureCard/LiteratureCard";
-import Autoplay from "embla-carousel-autoplay";
 
 import {
   Carousel,
@@ -23,7 +21,7 @@ export default function Catalog({ genreId }: { genreId: number }) {
     async function fetchData() {
       try {
         const response = await axios.get<Literature[]>(
-          `${getApiURL()}/literature/genre/${genreId}`
+          `${getApiURL()}/literature/genre/${genreId}?limit=6`
         );
         setCatalogData(response.data);
       } catch (error) {
@@ -39,7 +37,7 @@ export default function Catalog({ genreId }: { genreId: number }) {
   if (loading) {
     return (
       <div className="mt-6">
-        <h1 className="font-bold text-4xl">Loading...</h1>
+        <h1 className="font-bold text-2xl">Loading genre...</h1>
         <div className="grid grid-cols-3 gap-4 mt-6">
           {Array(6)
             .fill(0)
@@ -62,17 +60,9 @@ export default function Catalog({ genreId }: { genreId: number }) {
             <hr />
           </div>
           <div className="mt-6">
-            <Carousel
-              className="w-full flex flex-col"
-              opts={{ loop: true }}
-              plugins={[
-                Autoplay({
-                  delay: 5000,
-                }),
-              ]}
-            >
+            <Carousel className="w-full flex flex-col" opts={{ loop: false }}>
               <CarouselContent>
-                {catalogData.map((item) => (
+                {catalogData.slice(0, 6).map((item) => (
                   <CarouselItem key={item.literatureId} className="basis-1/3">
                     <LiteratureCard item={item} />
                   </CarouselItem>

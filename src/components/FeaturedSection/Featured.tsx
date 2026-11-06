@@ -13,19 +13,25 @@ import { getApiURL } from "@/util/constants";
 import { Literature } from "@/util/interfaces";
 import { useNavigate } from "react-router-dom";
 
-export default function Featured() {
+export default function Featured({ literatureIds = [] }: { literatureIds?: number[] }) {
   const navigate = useNavigate();
   const [featuredData, setFeaturedData] = useState<Literature[]>([]);
   const [loading, setLoading] = useState(true);
+  const literatureIdKey = literatureIds.join(",");
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await axios.get<Literature[]>(
-          `${getApiURL()}/literature/top-picks`
-        );
-
-        setFeaturedData(response.data);
+        const selectedIds = literatureIdKey
+          ? literatureIdKey.split(",").map(Number).filter(Number.isFinite)
+          : [];
+        if (selectedIds.length) {
+          const responses = await Promise.all(selectedIds.slice(0, 8).map((id) => axios.get<Literature>(`${getApiURL()}/literature/id/${id}`)));
+          setFeaturedData(responses.map((response) => response.data));
+        } else {
+          const response = await axios.get<Literature[]>(`${getApiURL()}/literature/top-picks`);
+          setFeaturedData(response.data);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -33,7 +39,7 @@ export default function Featured() {
       }
     }
     fetchData();
-  }, []);
+  }, [literatureIdKey]);
 
   if (loading) {
     return (
@@ -61,7 +67,7 @@ export default function Featured() {
       >
         <CarouselContent>
           {featuredData.map((v, i) => (
-            <CarouselItem key={i}>
+            <CarouselItem key={v.literatureId}>
               <div
                 className="rounded h-[500px] mt-4"
                 style={{
@@ -73,6 +79,7 @@ export default function Featured() {
                   <img
                     src={v.imageUrl}
                     alt={v.title}
+                    loading={i === 0 ? "eager" : "lazy"}
                     className="object-cover w-[40%] h-full"
                   />
                   <div className="w-full h-full pt-16 px-10 flex flex-col justify-between ">

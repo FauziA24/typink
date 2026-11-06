@@ -7,7 +7,7 @@ export default function GoogleLogo() {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <g clip-path="url(#clip0_75_103)">
+      <g clipPath="url(#clip0_75_103)">
         <path
           d="M38 19.9478C38 18.6223 37.8932 17.2895 37.6653 15.9855H19.3811V23.4946H29.8516C29.4171 25.9164 28.021 28.0588 25.9768 29.4202V34.2925H32.2235C35.8917 30.8962 38 25.8806 38 19.9478Z"
           fill="#4285F4"

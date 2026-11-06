@@ -5,10 +5,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Forward } from "lucide-react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import axios from "axios";
-import Cookies from "js-cookie";
 import { toast } from "@/components/ui/use-toast";
 import { getApiURL } from "@/util/constants";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 type FormData = {
   title: string;
@@ -31,8 +31,18 @@ export default function ForumCreate() {
   const navigate = useNavigate();
   const { register, handleSubmit, reset } = useForm<FormData>();
 
+  useEffect(() => {
+    if (!sessionStorage.getItem("typink_web_session")) {
+      toast({
+        title: "Login required",
+        description: "Please log in from the profile menu to create a forum post.",
+      });
+      navigate("/auth");
+    }
+  }, [navigate]);
+
   const onSubmit: SubmitHandler<FormData> = async (data) => {
-    const token = Cookies.get("token");
+    const token = sessionStorage.getItem("typink_web_session");
 
     if (!token) {
       toast({
@@ -53,7 +63,7 @@ export default function ForumCreate() {
         },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            
           },
         }
       );

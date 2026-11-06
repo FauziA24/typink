@@ -1,11 +1,9 @@
 import CommentCard from "@/components/Comments/Comments";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { timeSince } from "@/lib/utils";
 import { getApiURL } from "@/util/constants";
-import { LiteratureData } from "@/util/interfaces";
+import { ChapterComment, LiteratureData } from "@/util/interfaces";
 import axios from "axios";
-import Cookies from "js-cookie";
 import { Forward, Layers, MessageSquareMore, Settings2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -36,29 +34,19 @@ export default function ReadingConfig({
   const [tabMenu, setTabMenu] = useState<
     "config" | "comment" | "chapters" | "none"
   >("none");
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<ChapterComment[]>([]);
   const [newComment, setNewComment] = useState<string>("");
   const [chapterList, setChapter] = useState<chaptersInterface[]>([]);
   const { id, chapterId } = useParams<{ id: string; chapterId: string }>();
-  const token = Cookies.get("token");
-
-  useEffect(() => {
-    if (tabMenu === "comment") {
-      fetchComments();
-    }
-  }, [tabMenu]);
-
-  useEffect(() => {
-    fetchChapters();
-  }, []);
+  const isAuthenticated = Boolean(sessionStorage.getItem("typink_web_session"));
 
   const fetchComments = useCallback(async () => {
     try {
-      const response = await axios.get(
+      const response = await axios.get<ChapterComment[]>(
         `${getApiURL()}/chapter/comments/${chapterId}`,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            
           },
         }
       );
@@ -74,7 +62,7 @@ export default function ReadingConfig({
         `${getApiURL()}/literature/id/${id}`,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            
           },
         }
       );
@@ -89,31 +77,41 @@ export default function ReadingConfig({
     } catch (error) {
       console.error("Error fetching comments:", error);
     }
-  }, [chapterId]);
+  }, [id]);
+
+  useEffect(() => {
+    if (tabMenu === "comment") {
+      void fetchComments();
+    }
+  }, [fetchComments, tabMenu]);
+
+  useEffect(() => {
+    void fetchChapters();
+  }, [fetchChapters]);
 
   const handleAddComment = async () => {
     try {
-      const response = await axios.post(
+      await axios.post(
         `${getApiURL()}/chapter/comment`,
         { content: newComment, chapterId: chapterId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { } }
       );
-      fetchComments();
+      await fetchComments();
       setNewComment("");
     } catch (error) {
       console.error("Error adding comment:", error);
     }
   };
 
-  const handleCommentVote = async (commentId: number, voteType: string) => {
+  const handleCommentVote = async (commentId: number, voteType: "upvote" | "downvote") => {
     console.log({ chapterCommentId: commentId, voteType: voteType });
     try {
       await axios.post(
         `${getApiURL()}/voting/chapter-comment`,
         { chapterCommentId: commentId, voteType: voteType },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { } }
       );
-      fetchComments();
+      await fetchComments();
     } catch (error) {
       console.error("Error voting on comment:", error);
     }
@@ -246,7 +244,7 @@ export default function ReadingConfig({
       {ElementMap[tabMenu]}
       {tabMenu == "comment" && (
         <div className="h-[80vh] right-[80px] bg-white w-[300px] fixed p-6 overflow-y-auto">
-          {token && (
+          {isAuthenticated && (
             <div className="flex flex-col mb-6">
               <h2 className="text-xl font-bold my-6">Comment</h2>
               <Textarea
@@ -265,6 +263,7 @@ export default function ReadingConfig({
             commentType="Chapter"
             comments={comments}
             handleCommentVote={handleCommentVote}
+            targetId={Number(chapterId)}
           />
         </div>
       )}

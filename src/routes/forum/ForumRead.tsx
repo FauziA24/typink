@@ -7,7 +7,7 @@ import VoteButtons from "@/components/VoteButtons/VoteButtons";
 import { getApiURL } from "@/util/constants";
 import CommentCard from "@/components/Comments/Comments";
 import { ForumComment, ForumData } from "@/util/interfaces";
-import Cookies from "js-cookie";
+import ReportButton from "@/components/ReportButton/ReportButton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
@@ -19,7 +19,7 @@ export default function ForumRead() {
   const [comments, setComments] = useState<ForumComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
-  const token = Cookies.get("token");
+  const token = sessionStorage.getItem("typink_web_session");
 
   useEffect(() => {
     async function fetchData() {
@@ -28,7 +28,7 @@ export default function ForumRead() {
           `${getApiURL()}/forum/id/${id}`,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
+              
             },
           }
         );
@@ -38,7 +38,7 @@ export default function ForumRead() {
           `${getApiURL()}/forum/comments/${id}`,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
+              
             },
           }
         );
@@ -50,19 +50,27 @@ export default function ForumRead() {
       }
     }
     fetchData();
-  }, [id]);
+  }, [id, token]);
 
   const handleVote = async (
     forumId: number,
     voteType: "upvote" | "downvote"
   ) => {
+    if (!token) {
+      toast({
+        title: "Login required",
+        description: "Please log in from the profile menu to vote.",
+      });
+      return;
+    }
+
     try {
       await axios.post(
         `${getApiURL()}/voting/forum`,
         { forumId, voteType },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            
           },
         }
       );
@@ -96,13 +104,21 @@ export default function ForumRead() {
     commentId: number,
     voteType: "upvote" | "downvote"
   ) => {
+    if (!token) {
+      toast({
+        title: "Login required",
+        description: "Please log in from the profile menu to vote on comments.",
+      });
+      return;
+    }
+
     try {
       await axios.post(
         `${getApiURL()}/voting/forum-comment`,
         { forumCommentId: commentId, voteType },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            
           },
         }
       );
@@ -141,7 +157,7 @@ export default function ForumRead() {
         { forumId: Number(id), content: newComment },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            
           },
         }
       );
@@ -162,7 +178,7 @@ export default function ForumRead() {
         `${getApiURL()}/forum/comments/${id}`,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            
           },
         }
       );
@@ -189,6 +205,7 @@ export default function ForumRead() {
         value={forumData.voteCount}
         status={forumData.vote as "upvote" | "downvote" | "blank"}
       />
+      <ReportButton targetType="forum" targetId={forumData.forumId} />
       <hr className="mt-6" />
       {token && (
         <div className="flex flex-col">
@@ -210,6 +227,7 @@ export default function ForumRead() {
         commentType="Forum"
         comments={comments}
         handleCommentVote={handleCommentVote}
+        targetId={Number(id)}
       />
     </Layout>
   );

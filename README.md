@@ -1,5 +1,19 @@
 # React + TypeScript + Vite
 
+## Docker
+
+This app is wired into `../docker-compose.yml` together with `typinkAdmin`
+and PostgreSQL.
+
+From `D:\Projek\Website\typink`, copy `.env.example` to `.env` if you want to
+override ports, database credentials, or the API URL, then run:
+
+```bash
+docker compose up --build
+```
+
+The public Typink app is exposed on `http://localhost:3000` by default.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

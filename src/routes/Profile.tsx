@@ -14,11 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { timeSince } from "@/lib/utils";
 import { defaultUserIcon, getApiURL } from "@/util/constants";
-import { Literature, User } from "@/util/interfaces";
+import { Literature } from "@/util/interfaces";
 import axios from "axios";
-import Cookies from "js-cookie";
+import { BookOpen, Library, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import MediaUpload from "@/components/MediaUpload/MediaUpload";
 
 interface collectionResponse {
   collectionId: number;
@@ -56,7 +57,7 @@ const Profile = () => {
 
   const { id } = useParams<{ id: string }>();
 
-  const currId = Cookies.get("uid");
+  const currId = sessionStorage.getItem("typink_user_id");
 
   useEffect(() => {
     async function fetchData() {
@@ -81,14 +82,12 @@ const Profile = () => {
       if (field === "bio") setBioLoading(true);
       if (field === "imageUrl") setImageLoading(true);
 
-      const token = Cookies.get("token");
-
       await axios.put(
         `${getApiURL()}/user/update`,
         { [field]: value },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            
           },
         }
       );
@@ -101,7 +100,7 @@ const Profile = () => {
         `${getApiURL()}/user/id/${id}`
       );
       if (field === "imageUrl") {
-        Cookies.set("uimg", imageUrl);
+        sessionStorage.setItem("typink_user_image", imageUrl);
       }
       setUserData(response.data);
     } catch (error) {
@@ -117,6 +116,13 @@ const Profile = () => {
       <div className="flex-auto w-full">
         <h1 className="text-3xl font-bold text-left mb-4">Profile</h1>
         <hr className="w-full mb-4" />
+        {loading ? (
+          <div className="flex min-h-[320px] items-center justify-center text-gray-500">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            Loading profile...
+          </div>
+        ) : (
+          <>
         <div className="flex center gap-10 flex-row">
           <div className="w-40 h-40 relative">
             <div className="rounded-full overflow-hidden border-40 border-white">
@@ -154,17 +160,12 @@ const Profile = () => {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="image-url" className="text-right">
-                        Image Url
-                      </Label>
-                      <Input
-                        id="image-url"
-                        value={imageUrl}
-                        onChange={(e) => setImageUrl(e.target.value)}
-                        className="col-span-3"
-                      />
-                    </div>
+                    <MediaUpload
+                      purpose="avatar"
+                      label="Upload avatar"
+                      value={imageUrl}
+                      onChange={setImageUrl}
+                    />
                   </div>
                   <DialogFooter>
                     <Button
@@ -230,6 +231,12 @@ const Profile = () => {
             <h1 className="font-bold text-2xl">Creation</h1>
             <hr className="my-4" />
           </div>
+          {userData.literature.length === 0 && (
+            <div className="rounded-lg border border-dashed p-8 text-center text-gray-500">
+              <BookOpen className="mx-auto mb-3" />
+              Belum ada cerita yang dipublikasikan.
+            </div>
+          )}
           <div className="grid grid-cols-3 grid-flow-row gap-4 mt-6">
             {userData.literature.map((item) => (
               <LiteratureCard key={item.literatureId} item={item} />
@@ -241,6 +248,12 @@ const Profile = () => {
             <h1 className="font-bold text-2xl">Collection</h1>
             <hr className="my-4" />
           </div>
+          {userData.collections.length === 0 && (
+            <div className="rounded-lg border border-dashed p-8 text-center text-gray-500">
+              <Library className="mx-auto mb-3" />
+              Belum ada cerita tersimpan di My List.
+            </div>
+          )}
           <div className="grid grid-cols-3 grid-flow-row gap-4 mt-6">
             {userData.collections.map((item) => (
               <LiteratureCard
@@ -250,6 +263,8 @@ const Profile = () => {
             ))}
           </div>
         </div>
+          </>
+        )}
       </div>
     </ProfileLayout>
   );

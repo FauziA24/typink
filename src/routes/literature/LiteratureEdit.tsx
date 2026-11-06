@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import axios from "axios";
-import Cookies from "js-cookie";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { getApiURL } from "@/util/constants";
 import { Literature } from "@/util/interfaces";
+import MediaUpload from "@/components/MediaUpload/MediaUpload";
 
 type FormData = {
   title: string;
@@ -44,10 +44,11 @@ interface createResponse {
 export default function LiteratureEdit() {
   const { literatureId } = useParams<{ literatureId: string }>();
   const navigate = useNavigate();
-  const { register, handleSubmit, reset, setValue } = useForm<FormData>();
+  const { register, handleSubmit, reset, setValue, watch } = useForm<FormData>();
   const [loading, setLoading] = useState(false);
+  const imageUrl = watch("imageUrl");
 
-  const fetchLiteratureData = async () => {
+  const fetchLiteratureData = useCallback(async () => {
     if (!literatureId) return;
     try {
       setLoading(true);
@@ -70,14 +71,14 @@ export default function LiteratureEdit() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [literatureId, reset]);
 
   useEffect(() => {
     fetchLiteratureData();
-  }, [literatureId]);
+  }, [fetchLiteratureData]);
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
-    const token = Cookies.get("token");
+    const token = sessionStorage.getItem("typink_web_session");
 
     if (!token) {
       toast({
@@ -103,7 +104,7 @@ export default function LiteratureEdit() {
           },
           {
             headers: {
-              Authorization: `Bearer ${token}`,
+              
             },
           }
         );
@@ -125,7 +126,7 @@ export default function LiteratureEdit() {
           },
           {
             headers: {
-              Authorization: `Bearer ${token}`,
+              
             },
           }
         );
@@ -160,10 +161,13 @@ export default function LiteratureEdit() {
             placeholder="Title"
             className="h-14 text-xl mb-4"
           />
-          <Input
-            {...register("imageUrl", { required: true })}
-            placeholder="Thumbnail Url"
-            className="mb-4"
+          <input type="hidden" {...register("imageUrl", { required: true })} />
+          <MediaUpload
+            purpose="cover"
+            label="Replace cover"
+            value={imageUrl}
+            required
+            onChange={(url) => setValue("imageUrl", url, { shouldValidate: true })}
           />
           <Textarea
             {...register("synopsis", { required: true })}

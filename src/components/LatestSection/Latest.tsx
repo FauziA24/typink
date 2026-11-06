@@ -12,7 +12,7 @@ export default function Latest() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await axios.get<Literature[]>(`${getApiURL()}/literature/latest-updates`);
+        const response = await axios.get<Literature[]>(`${getApiURL()}/literature/latest-updates?limit=9`);
         setLatestData(response.data);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -30,7 +30,7 @@ export default function Latest() {
         {Array(6)
           .fill(0)
           .map((_, idx) => (
-            <Skeleton key={idx} className="h-[350px] w-full rounded" />
+            <Skeleton key={idx} className="h-[350px] w-full rounded-sm" />
           ))}
       </div>
     );
@@ -40,11 +40,11 @@ export default function Latest() {
     <div className="mt-6">
       <div>
         <h1 className="font-bold text-4xl">Latest Updates</h1>
-        <h6 className="mb-3">Freshly Released Fictions</h6>
+        <h6 className="mb-3 text-gray-500">Freshly released fiction from Typink creators</h6>
         <hr />
       </div>
       <div className="grid grid-cols-3 grid-flow-row gap-4 mt-6">
-        {latestData.map((item) => (
+        {latestData.slice(0, 9).map((item) => (
           <LiteratureCard key={item.literatureId} item={item} />
         ))}
       </div>

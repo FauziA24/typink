@@ -1,11 +1,9 @@
 import CommentCard from "@/components/Comments/Comments";
-import LiteratureSocials from "@/components/LiteratureSocials/LiteratureSocials";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Layout from "@/components/ui/layout";
@@ -15,7 +13,6 @@ import { timeSince } from "@/lib/utils";
 import { getApiURL } from "@/util/constants";
 import { LiteratureComment, LiteratureData } from "@/util/interfaces";
 import axios from "axios";
-import Cookies from "js-cookie";
 import {
   Check,
   Coins,
@@ -41,6 +38,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import VoteButtons from "@/components/VoteButtons/VoteButtons";
+import ReportButton from "@/components/ReportButton/ReportButton";
+import LiteratureCard from "@/components/LiteratureCard/LiteratureCard";
 
 export default function LiteratureRead() {
   const navigate = useNavigate();
@@ -51,15 +50,24 @@ export default function LiteratureRead() {
   const [comments, setComments] = useState<LiteratureComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
-  const token = Cookies.get("token");
+  const token = sessionStorage.getItem("typink_web_session");
   const [currSec, setCurrSec] = useState(1);
-  const currentUserId = Cookies.get("uid");
+  const currentUserId = sessionStorage.getItem("typink_user_id");
 
   const [saveButtonHover, setSaveButton] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [following, setFollowing] = useState(false);
+  const [related, setRelated] = useState<LiteratureData[]>([]);
 
   const [alertOpen, setAlertOpen] = useState(0);
   const [literatureAlertOpen, setLAlertOpen] = useState(false);
+
+  const toggleFollow = async () => {
+    if (!token || !literatureData) return navigate("/auth");
+    const url = `${getApiURL()}/authors/${literatureData.authorId}/follow`;
+    const config = { headers: { } };
+    if (following) await axios.delete(url, config); else await axios.post(url, {}, config);
+    setFollowing(!following);
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -67,15 +75,16 @@ export default function LiteratureRead() {
         const literatureResponse = await axios.get(
           `${getApiURL()}/literature/id/${id}`,
           {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { },
           }
         );
         setLiteratureData(literatureResponse.data);
+        axios.get(`${getApiURL()}/literature/${id}/related`).then((response) => setRelated(response.data)).catch(() => undefined);
 
         const commentsResponse = await axios.get(
           `${getApiURL()}/literature/comments/${id}`,
           {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { },
           }
         );
         setComments(commentsResponse.data);
@@ -86,18 +95,26 @@ export default function LiteratureRead() {
       }
     }
     fetchData();
-  }, [id]);
+  }, [id, token]);
 
   const handleCommentVote = async (
     commentId: number,
     voteType: "upvote" | "downvote"
   ) => {
+    if (!token) {
+      toast({
+        title: "Login required",
+        description: "Please log in from the profile menu to vote on comments.",
+      });
+      return;
+    }
+
     try {
       await axios.post(
         `${getApiURL()}/voting/literature-comment`,
         { literatureCommentId: commentId, voteType },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { },
         }
       );
 
@@ -129,13 +146,12 @@ export default function LiteratureRead() {
   };
 
   const handleAddToCollection = async () => {
-    setIsSaving(true);
     try {
       await axios.post(
         `${getApiURL()}/collection/add`,
         { literatureId: Number(id) },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { },
         }
       );
       toast({
@@ -155,18 +171,15 @@ export default function LiteratureRead() {
         title: "Error",
         description: "Failed to add to collection.",
       });
-    } finally {
-      setIsSaving(false);
     }
   };
 
   const handleDeleteCollection = async () => {
-    setIsSaving(true);
     try {
       await axios.delete(
         `${getApiURL()}/collection/${literatureData?.literatureId}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { },
         }
       );
       toast({
@@ -186,8 +199,6 @@ export default function LiteratureRead() {
         title: "Error",
         description: "Failed to add to collection.",
       });
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -197,7 +208,7 @@ export default function LiteratureRead() {
         `${getApiURL()}/literature/${id}/comment`,
         { literatureId: Number(id), content: newComment },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { },
         }
       );
       toast({
@@ -226,7 +237,7 @@ export default function LiteratureRead() {
     try {
       await axios.delete(`${getApiURL()}/chapter/delete`, {
         data: { chapterId },
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { },
       });
       toast({
         title: "Chapter deleted",
@@ -251,7 +262,7 @@ export default function LiteratureRead() {
       await axios.delete(
         `${getApiURL()}/literature/delete/${literatureData?.literatureId}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { },
         }
       );
       toast({
@@ -271,12 +282,21 @@ export default function LiteratureRead() {
   }
 
   const handleVote = async (voteType: "upvote" | "downvote") => {
+    if (!token) {
+      toast({
+        title: "Login required",
+        description: "Please log in from the profile menu to vote.",
+      });
+      navigate("/auth");
+      return;
+    }
+
     try {
       await axios.post(
         `${getApiURL()}/voting/literature`,
         { literatureId: Number(id), voteType },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { },
         }
       );
       setLiteratureData((prevData) => {
@@ -305,7 +325,7 @@ export default function LiteratureRead() {
 
   return (
     <Layout leftBar={false} rightBar={false} sticky>
-      <div className="flex flex-row my-10 relative">
+      <div className="relative my-6 flex min-w-0 flex-col gap-6 md:my-10 md:flex-row">
         {literatureData?.authorId === currentUserId && (
           <>
             <div className="absolute top-0 right-0 flex flex-col">
@@ -360,16 +380,16 @@ export default function LiteratureRead() {
           </>
         )}
         <img
-          className="w-80 h-[450px] object-cover rounded-sm"
+          className="mx-auto aspect-[4/5] h-auto w-full max-w-80 rounded-sm object-cover md:mx-0 md:h-[450px]"
           src={`${literatureData?.imageUrl}`}
           alt=""
         />
-        <div className="w-full p-10 flex flex-col justify-between">
+        <div className="flex min-w-0 w-full flex-col justify-between gap-8 p-0 md:p-10">
           <div className="flex flex-col gap-4">
-            <span className="text-5xl font-bold break-words w-[440px] block">
+            <span className="block w-full break-words text-3xl font-bold sm:text-4xl md:text-5xl">
               {literatureData?.title}
             </span>
-            <div className="flex flex-row gap-6">
+            <div className="flex flex-wrap gap-4 sm:gap-6">
               <div className="flex flex-row gap-2">
                 <Grid2X2 />
                 {literatureData?.genre.genreTitle}
@@ -380,9 +400,9 @@ export default function LiteratureRead() {
               </div>
             </div>
             <span>Author: {literatureData?.users.username}</span>
-            <div className="flex flex-row gap-4 items-center">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               {literatureData?.authorId !== currentUserId && (
-                <Button
+                <><Button variant="outline" onClick={toggleFollow}>{following ? "Following" : "Follow author"}</Button><Button
                   className="w-fit bg-[#FBBC04] hover:bg-[#EAAF00] rounded-xl"
                   onClick={() =>
                     navigate(`/donate/${literatureData?.authorId}`)
@@ -390,7 +410,7 @@ export default function LiteratureRead() {
                 >
                   <Coins className="mr-4" />
                   Donate To Author
-                </Button>
+                </Button></>
               )}
               {literatureData?.donated === true && (
                 <Check className="text-[#04D192]" />
@@ -431,7 +451,7 @@ export default function LiteratureRead() {
               </>
             )}
           </div>
-          <div className="flex flex-row justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <VoteButtons
               className="mb-0 items-center flex flex-row"
               downvoteFn={() => handleVote("downvote")}
@@ -439,6 +459,7 @@ export default function LiteratureRead() {
               value={literatureData?.voteCount || 0}
               status={literatureData?.vote as "upvote" | "downvote" | "blank"}
             />
+            <ReportButton targetType="literature" targetId={Number(id)} />
             {literatureData?.authorId === currentUserId && (
               <Button
                 variant="outline"
@@ -453,9 +474,9 @@ export default function LiteratureRead() {
       </div>
 
       <div>
-        <div>
+        <div className="flex w-full">
           <Button
-            className={`w-44 h-12 text-2xl rounded-none font-bold ${
+            className={`h-12 flex-1 rounded-none text-lg font-bold sm:max-w-44 sm:text-2xl ${
               currSec == 1 && "border-b-2 border-black"
             }`}
             variant={"ghost"}
@@ -464,7 +485,7 @@ export default function LiteratureRead() {
             Info
           </Button>
           <Button
-            className={`w-44 h-12 text-2xl rounded-none font-bold ${
+            className={`h-12 flex-1 rounded-none text-lg font-bold sm:max-w-44 sm:text-2xl ${
               currSec == 2 && "border-b-2 border-black"
             }`}
             variant={"ghost"}
@@ -496,26 +517,27 @@ export default function LiteratureRead() {
               comments={comments}
               handleCommentVote={handleCommentVote}
               commentType="Literature"
+              targetId={Number(id)}
             />
+            {related.length > 0 && <section className="mt-10"><h2 className="mb-4 text-xl font-bold">Related stories</h2><div className="grid grid-cols-2 gap-4 md:grid-cols-4">{related.slice(0, 4).map((item) => <LiteratureCard key={item.literatureId} item={item} />)}</div></section>}
           </>
         )}
         {currSec == 2 && (
           <>
             {literatureData?.chapters.map((v, i) => (
-              <div className="flex flex-row  items-center">
+              <div key={`o${i}`} className="flex min-w-0 flex-row items-center">
                 <div
                   className="hover:bg-secondary cursor-pointer my-2 w-full"
-                  key={`o${i}`}
                   onClick={() =>
                     navigate(
                       `/read/${id}/${v.chapterId}`
                     )
                   }
                 >
-                  <div className="flex flex-row w-full justify-between h-10 items-center p-3 py-8">
-                    <span className="w-[20%]">Chapter {v.chapterNumber}</span>
-                    <span className="w-full">{v.chapterTitle}</span>
-                    <span className="w-[20%]">
+                  <div className="flex min-h-16 w-full flex-col justify-center gap-1 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-sm text-gray-500 sm:w-[20%]">Chapter {v.chapterNumber}</span>
+                    <span className="min-w-0 flex-1 break-words">{v.chapterTitle}</span>
+                    <span className="text-sm text-gray-500 sm:w-[20%] sm:text-right">
                       {timeSince(new Date(v.created_at))}
                     </span>
                   </div>

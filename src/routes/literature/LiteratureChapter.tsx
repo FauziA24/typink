@@ -7,23 +7,19 @@ import { useParams, useNavigate } from "react-router-dom";
 import VoteButtons from "@/components/VoteButtons/VoteButtons";
 import { getApiURL } from "@/util/constants";
 import { Literature, Chapter } from "@/util/interfaces";
-import Cookies from "js-cookie";
 import { toast } from "@/components/ui/use-toast";
+import ReportButton from "@/components/ReportButton/ReportButton";
 
 export default function LiteratureChapter() {
   const navigate = useNavigate();
   const { id, chapterId } = useParams<{ id: string; chapterId: string }>();
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [literature, setLiterature] = useState<Literature | null>(null);
-  const token = Cookies.get("token");
+  const token = sessionStorage.getItem("typink_web_session");
 
   const [bgColor, setBgColor] = useState<string>("#FFFFFF");
   const [font, setFont] = useState<string>("Inter");
   const [fontSize, setFontSize] = useState<number>(16);
-
-  const storedBgColor = localStorage.getItem("bgColor");
-  const storedFont = localStorage.getItem("font");
-  const storedFontSize = localStorage.getItem("fontSize");
 
   const handleBgColorChange = (color: string) => {
     setBgColor(color);
@@ -63,7 +59,7 @@ export default function LiteratureChapter() {
           `${getApiURL()}/chapter/id/${chapterId}`,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
+              
             },
           }
         );
@@ -73,7 +69,7 @@ export default function LiteratureChapter() {
           `${getApiURL()}/literature/id/${id}`,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
+              
             },
           }
         );
@@ -83,19 +79,54 @@ export default function LiteratureChapter() {
       }
     }
     fetchChapter();
-  }, [id, chapterId]);
+  }, [id, chapterId, token]);
+
+  useEffect(() => {
+    if (!token || !id || !chapterId) return;
+    let timeout = 0;
+    const saveProgress = () => {
+      window.clearTimeout(timeout);
+      timeout = window.setTimeout(() => {
+        const scrollable = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+        const progressPercent = Math.round(Math.min(100, (window.scrollY / scrollable) * 100));
+        axios.post(`${getApiURL()}/reading-progress`, {
+          literatureId: Number(id), chapterId: Number(chapterId), position: Math.round(window.scrollY), progressPercent,
+        }, { headers: { } }).catch(() => undefined);
+      }, 500);
+    };
+    window.addEventListener("scroll", saveProgress, { passive: true });
+    saveProgress();
+    return () => { window.removeEventListener("scroll", saveProgress); window.clearTimeout(timeout); };
+  }, [id, chapterId, token]);
+
+  const saveBookmark = async () => {
+    if (!token) return navigate("/auth");
+    await axios.patch(`${getApiURL()}/collection/${id}`, {
+      lastReadChapterId: Number(chapterId), bookmarkPosition: Math.round(window.scrollY),
+    }, { headers: { } });
+    toast({ title: "Bookmark saved", description: "Your reading position has been saved." });
+  };
 
   const handleVote = async (
     chapterId: number,
     voteType: "upvote" | "downvote"
   ) => {
+    if (!token) {
+      toast({
+        title: "Login required",
+        description: "Please log in from the profile menu to vote.",
+      });
+      navigate("/auth");
+      return;
+    }
+
     try {
       await axios.post(
         `${getApiURL()}/voting/chapter`,
         { chapterId, voteType },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            
           },
         }
       );
@@ -133,9 +164,7 @@ export default function LiteratureChapter() {
       const newIndex = currentIndex + offset;
 
       if (newIndex >= 0 && newIndex < literature.chapters.length) {
-        navigate(
-          `/chapter/id/${id}/chapterId/${literature.chapters[newIndex].chapterId}`
-        );
+        navigate(`/read/${id}/${literature.chapters[newIndex].chapterId}`);
       } else {
         toast({
           title: "No more chapter found",
@@ -178,6 +207,7 @@ export default function LiteratureChapter() {
             value={chapter.voteCount}
             status={chapter.vote as "upvote" | "downvote" | "blank"}
           />
+          <ReportButton targetType="chapter" targetId={chapter.chapterId} />
           <div className="flex flex-row w-full justify-between mb-7">
             <Button
               className="w-32 h-16"
@@ -193,6 +223,7 @@ export default function LiteratureChapter() {
             >
               To Top
             </Button>
+            <Button className="h-16" variant="outline" onClick={saveBookmark}>Bookmark position</Button>
             <Button
               className="w-32 h-16"
               variant="ghost"

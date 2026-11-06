@@ -7,6 +7,7 @@ export interface User {
   userId: string;
   username: string;
   imgUrl: string;
+  imageUrl?: string;
 }
 
 export interface Chapter {
@@ -66,6 +67,7 @@ export interface ForumComment {
   created_at: Date;
   vote: string;
   voteCount: number;
+  parentCommentId?: number | null;
 }
 
 export interface LiteratureComment {
@@ -80,6 +82,7 @@ export interface LiteratureComment {
   created_at: Date;
   vote: string;
   voteCount: number;
+  parentCommentId?: number | null;
 }
 
 export interface ChapterComment {
@@ -94,6 +97,7 @@ export interface ChapterComment {
   created_at: Date;
   vote: string;
   voteCount: number;
+  parentCommentId?: number | null;
 }
 
 export interface ForumData {
@@ -111,6 +115,8 @@ export interface ForumData {
   _count: {
     forumComments: number;
   };
+  isPinned?: boolean;
+  isLocked?: boolean;
 }
 
 export interface Chapter {
@@ -122,6 +128,8 @@ export interface Chapter {
   imageUrl: string;
   content: string;
   voteCount: number;
+  status?: "draft" | "published";
+  scheduledAt?: string | null;
 }
 
 export interface LiteratureData {
@@ -157,4 +165,7 @@ export interface Transaction {
   transactionType: string;
   created_at: Date;
   message: string;
+  paymentMethod?: string;
+  status?: string;
+  provider?: string;
 }
